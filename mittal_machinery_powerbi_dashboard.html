@@ -1,0 +1,425 @@
+
+<h2 class="sr-only">Mittal Machinery Sales Analytics Dashboard — Power BI style interactive dashboard showing revenue, orders, and vendor data.</h2>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.db { background: var(--surface-0); min-height: 100vh; padding: 0; }
+.topbar { background: #1a5276; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+.topbar-title { color: #fff; font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.topbar-sub { color: rgba(255,255,255,0.65); font-size: 12px; }
+.pbi-logo { background: #f2c811; color: #000; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.5px; }
+.filters { background: var(--surface-1); border-bottom: 0.5px solid var(--border); padding: 8px 20px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.filter-label { font-size: 12px; color: var(--text-muted); }
+.filter-select { font-size: 12px; padding: 4px 10px; border: 0.5px solid var(--border-strong); border-radius: var(--radius); background: var(--surface-2); color: var(--text-primary); cursor: pointer; }
+.body { padding: 16px 20px; }
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 8px; padding: 12px 14px; position: relative; overflow: hidden; }
+.kpi-accent { border-left: 3px solid #1a5276; }
+.kpi-green { border-left: 3px solid #1baf7a; }
+.kpi-amber { border-left: 3px solid #eda100; }
+.kpi-red { border-left: 3px solid #e34948; }
+.kpi-purple { border-left: 3px solid #4a3aa7; }
+.kpi-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-value { font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1; }
+.kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.kpi-delta { font-size: 11px; margin-top: 3px; }
+.delta-up { color: #1baf7a; }
+.delta-down { color: #e34948; }
+.charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+.charts-row2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.chart-card { background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 8px; padding: 14px; }
+.chart-title { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.legend-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+</style>
+
+<div class="db">
+  <div class="topbar">
+    <div class="topbar-title">
+      <span class="pbi-logo">PBI</span>
+      <div>
+        <div>Mittal Machinery — Sales Analytics Dashboard</div>
+        <div class="topbar-sub">Gangapur City · Jaipur · Sawai Madhopur &nbsp;|&nbsp; Jan 2024 – May 2026</div>
+      </div>
+    </div>
+    <div style="color:rgba(255,255,255,0.7); font-size:12px;" id="last-refresh">Refreshed: just now</div>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Filters:</span>
+    <select class="filter-select" id="city-filter" onchange="applyFilters()">
+      <option value="all">All Cities</option>
+      <option value="Gangapur City">Gangapur City</option>
+      <option value="Jaipur">Jaipur</option>
+      <option value="Sawai Madhopur">Sawai Madhopur</option>
+    </select>
+    <select class="filter-select" id="cat-filter" onchange="applyFilters()">
+      <option value="all">All Categories</option>
+      <option value="Engine Oil">Engine Oil</option>
+      <option value="Gear Oil">Gear Oil</option>
+      <option value="Motor Parts">Motor Parts</option>
+      <option value="Tractor Parts">Tractor Parts</option>
+    </select>
+    <select class="filter-select" id="year-filter" onchange="applyFilters()">
+      <option value="all">All Years</option>
+      <option value="2024">2024</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+    </select>
+    <select class="filter-select" id="payment-filter" onchange="applyFilters()">
+      <option value="all">All Payments</option>
+      <option value="Cash">Cash</option>
+      <option value="UPI">UPI</option>
+      <option value="Bank Transfer">Bank Transfer</option>
+    </select>
+  </div>
+
+  <div class="body">
+    <div class="kpi-row">
+      <div class="kpi kpi-accent">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value" id="kpi-rev">₹20.5L</div>
+        <div class="kpi-sub">delivered orders only</div>
+        <div class="kpi-delta delta-up" id="kpi-rev-d">↑ from ₹0 base</div>
+      </div>
+      <div class="kpi kpi-green">
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-value" id="kpi-orders">500</div>
+        <div class="kpi-sub">all statuses</div>
+        <div class="kpi-delta delta-up" id="kpi-orders-d">425 delivered</div>
+      </div>
+      <div class="kpi kpi-amber">
+        <div class="kpi-label">Avg Order Value</div>
+        <div class="kpi-value" id="kpi-aov">₹4,835</div>
+        <div class="kpi-sub">per delivered order</div>
+        <div class="kpi-delta" style="color:var(--text-muted)" id="kpi-aov-d">excl. cancelled</div>
+      </div>
+      <div class="kpi kpi-red">
+        <div class="kpi-label">Cancellation Rate</div>
+        <div class="kpi-value" id="kpi-cancel">15%</div>
+        <div class="kpi-sub">75 of 500 orders</div>
+        <div class="kpi-delta delta-down" id="kpi-cancel-d">↓ needs improvement</div>
+      </div>
+      <div class="kpi kpi-purple">
+        <div class="kpi-label">Active Vendors</div>
+        <div class="kpi-value">15</div>
+        <div class="kpi-sub">across 3 cities</div>
+        <div class="kpi-delta delta-up">6 · 5 · 4 split</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Monthly Revenue Trend (₹)</div>
+        <div style="position:relative; width:100%; height:220px;">
+          <canvas id="lineChart" role="img" aria-label="Line chart of monthly revenue from Jan 2024 to May 2026">Monthly revenue trend data.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Revenue by Category</div>
+        <div class="legend-row" id="cat-legend"></div>
+        <div style="position:relative; width:100%; height:188px;">
+          <canvas id="donutChart" role="img" aria-label="Donut chart of revenue by product category">Category revenue breakdown.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-row2">
+      <div class="chart-card">
+        <div class="chart-title">Revenue by City</div>
+        <div style="position:relative; width:100%; height:200px;">
+          <canvas id="cityChart" role="img" aria-label="Horizontal bar chart of revenue by city">City revenue chart.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Brand Performance</div>
+        <div style="position:relative; width:100%; height:200px;">
+          <canvas id="brandChart" role="img" aria-label="Bar chart of revenue by oil brand">Brand performance chart.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Payment Method Split</div>
+        <div class="legend-row" id="pay-legend"></div>
+        <div style="position:relative; width:100%; height:168px;">
+          <canvas id="payChart" role="img" aria-label="Pie chart of orders by payment method">Payment method breakdown.</canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const RAW = {
+  orders: [
+    {date:'2024-01',rev:38200,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Cash',status:'Delivered'},
+    {date:'2024-01',rev:52100,city:'Jaipur',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2024-01',rev:18900,city:'Sawai Madhopur',cat:'Motor Parts',brand:'SKF',payment:'Bank Transfer',status:'Cancelled'},
+    {date:'2024-02',rev:61400,city:'Gangapur City',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Delivered'},
+    {date:'2024-02',rev:44200,city:'Jaipur',cat:'Engine Oil',brand:'Total',payment:'UPI',status:'Delivered'},
+    {date:'2024-02',rev:29800,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Delivered'},
+    {date:'2024-03',rev:72300,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2024-03',rev:38900,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2024-03',rev:51200,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Veedol',payment:'Cash',status:'Cancelled'},
+    {date:'2024-04',rev:84500,city:'Gangapur City',cat:'Engine Oil',brand:'Remola',payment:'UPI',status:'Delivered'},
+    {date:'2024-04',rev:63200,city:'Jaipur',cat:'Motor Parts',brand:'FAG',payment:'Cash',status:'Delivered'},
+    {date:'2024-04',rev:41800,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2024-05',rev:95200,city:'Gangapur City',cat:'Gear Oil',brand:'Castrol',payment:'Cash',status:'Delivered'},
+    {date:'2024-05',rev:57300,city:'Jaipur',cat:'Engine Oil',brand:'Turbo',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2024-05',rev:33600,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'UPI',status:'Cancelled'},
+    {date:'2024-06',rev:108400,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2024-06',rev:74100,city:'Jaipur',cat:'Engine Oil',brand:'Gulf',payment:'UPI',status:'Delivered'},
+    {date:'2024-06',rev:48900,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Total',payment:'Cash',status:'Delivered'},
+    {date:'2024-07',rev:121300,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2024-07',rev:86500,city:'Jaipur',cat:'Motor Parts',brand:'SKF',payment:'Cash',status:'Delivered'},
+    {date:'2024-07',rev:52400,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Cancelled'},
+    {date:'2024-08',rev:134200,city:'Gangapur City',cat:'Gear Oil',brand:'Remola',payment:'Cash',status:'Delivered'},
+    {date:'2024-08',rev:91800,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'UPI',status:'Delivered'},
+    {date:'2024-08',rev:61300,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Delivered'},
+    {date:'2024-09',rev:118600,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2024-09',rev:83400,city:'Jaipur',cat:'Engine Oil',brand:'Veedol',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2024-09',rev:55700,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Cancelled'},
+    {date:'2024-10',rev:142800,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Cash',status:'Delivered'},
+    {date:'2024-10',rev:97200,city:'Jaipur',cat:'Motor Parts',brand:'FAG',payment:'UPI',status:'Delivered'},
+    {date:'2024-10',rev:68400,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2024-11',rev:156300,city:'Gangapur City',cat:'Gear Oil',brand:'Total',payment:'UPI',status:'Delivered'},
+    {date:'2024-11',rev:104600,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2024-11',rev:74100,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Cancelled'},
+    {date:'2024-12',rev:168900,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2024-12',rev:118400,city:'Jaipur',cat:'Engine Oil',brand:'Remola',payment:'UPI',status:'Delivered'},
+    {date:'2024-12',rev:81200,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Delivered'},
+    {date:'2025-01',rev:145200,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2025-01',rev:98300,city:'Jaipur',cat:'Motor Parts',brand:'SKF',payment:'Cash',status:'Delivered'},
+    {date:'2025-01',rev:67800,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Cancelled'},
+    {date:'2025-02',rev:162400,city:'Gangapur City',cat:'Gear Oil',brand:'Veedol',payment:'Cash',status:'Delivered'},
+    {date:'2025-02',rev:112100,city:'Jaipur',cat:'Engine Oil',brand:'Total',payment:'UPI',status:'Delivered'},
+    {date:'2025-02',rev:78300,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Delivered'},
+    {date:'2025-03',rev:178600,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2025-03',rev:124800,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2025-03',rev:86400,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Cancelled'},
+    {date:'2025-04',rev:191300,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Cash',status:'Delivered'},
+    {date:'2025-04',rev:138600,city:'Jaipur',cat:'Motor Parts',brand:'FAG',payment:'UPI',status:'Delivered'},
+    {date:'2025-04',rev:94200,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2025-05',rev:204100,city:'Gangapur City',cat:'Gear Oil',brand:'Remola',payment:'UPI',status:'Delivered'},
+    {date:'2025-05',rev:146300,city:'Jaipur',cat:'Engine Oil',brand:'Turbo',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2025-05',rev:102800,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Cancelled'},
+    {date:'2025-06',rev:218700,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2025-06',rev:158400,city:'Jaipur',cat:'Engine Oil',brand:'Total',payment:'UPI',status:'Delivered'},
+    {date:'2025-06',rev:108900,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Delivered'},
+    {date:'2025-07',rev:232400,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2025-07',rev:164200,city:'Jaipur',cat:'Motor Parts',brand:'SKF',payment:'Cash',status:'Delivered'},
+    {date:'2025-07',rev:114600,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Cancelled'},
+    {date:'2025-08',rev:248100,city:'Gangapur City',cat:'Gear Oil',brand:'Veedol',payment:'Cash',status:'Delivered'},
+    {date:'2025-08',rev:172800,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'UPI',status:'Delivered'},
+    {date:'2025-08',rev:121300,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Delivered'},
+    {date:'2025-09',rev:261800,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2025-09',rev:184100,city:'Jaipur',cat:'Engine Oil',brand:'Remola',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2025-09',rev:128600,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Cancelled'},
+    {date:'2025-10',rev:278400,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Cash',status:'Delivered'},
+    {date:'2025-10',rev:196300,city:'Jaipur',cat:'Motor Parts',brand:'FAG',payment:'UPI',status:'Delivered'},
+    {date:'2025-10',rev:136800,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2025-11',rev:292100,city:'Gangapur City',cat:'Gear Oil',brand:'Total',payment:'UPI',status:'Delivered'},
+    {date:'2025-11',rev:208700,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2025-11',rev:144200,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Cancelled'},
+    {date:'2025-12',rev:308600,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2025-12',rev:221400,city:'Jaipur',cat:'Engine Oil',brand:'Gulf',payment:'UPI',status:'Delivered'},
+    {date:'2025-12',rev:152800,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Remola',payment:'Cash',status:'Delivered'},
+    {date:'2026-01',rev:264300,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2026-01',rev:186400,city:'Jaipur',cat:'Motor Parts',brand:'SKF',payment:'Cash',status:'Delivered'},
+    {date:'2026-01',rev:124100,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Cancelled'},
+    {date:'2026-02',rev:281700,city:'Gangapur City',cat:'Gear Oil',brand:'Veedol',payment:'Cash',status:'Delivered'},
+    {date:'2026-02',rev:198200,city:'Jaipur',cat:'Engine Oil',brand:'Total',payment:'UPI',status:'Delivered'},
+    {date:'2026-02',rev:131600,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Delivered'},
+    {date:'2026-03',rev:298400,city:'Gangapur City',cat:'Tractor Parts',brand:'OEM',payment:'UPI',status:'Delivered'},
+    {date:'2026-03',rev:214600,city:'Jaipur',cat:'Engine Oil',brand:'HP',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2026-03',rev:142800,city:'Sawai Madhopur',cat:'Gear Oil',brand:'Gulf',payment:'Cash',status:'Cancelled'},
+    {date:'2026-04',rev:312100,city:'Gangapur City',cat:'Engine Oil',brand:'Castrol',payment:'Cash',status:'Delivered'},
+    {date:'2026-04',rev:228300,city:'Jaipur',cat:'Motor Parts',brand:'FAG',payment:'UPI',status:'Delivered'},
+    {date:'2026-04',rev:151400,city:'Sawai Madhopur',cat:'Tractor Parts',brand:'OEM',payment:'Cash',status:'Delivered'},
+    {date:'2026-05',rev:158200,city:'Gangapur City',cat:'Gear Oil',brand:'Remola',payment:'UPI',status:'Delivered'},
+    {date:'2026-05',rev:112600,city:'Jaipur',cat:'Engine Oil',brand:'Total',payment:'Bank Transfer',status:'Delivered'},
+    {date:'2026-05',rev:74300,city:'Sawai Madhopur',cat:'Motor Parts',brand:'Havells',payment:'Cash',status:'Delivered'},
+  ]
+};
+
+const COLORS = {
+  'Engine Oil':'#2a78d6','Gear Oil':'#1baf7a','Motor Parts':'#eda100','Tractor Parts':'#4a3aa7',
+  'Gangapur City':'#2a78d6','Jaipur':'#1baf7a','Sawai Madhopur':'#eda100',
+  'Castrol':'#00703c','Remola':'#1a5276','Total':'#c0392b','HP':'#f39c12',
+  'Gulf':'#e67e22','Veedol':'#8e44ad','OEM':'#2c3e50','Havells':'#16a085',
+  'Cash':'#2a78d6','UPI':'#1baf7a','Bank Transfer':'#eda100'
+};
+
+let charts = {};
+
+function filterData() {
+  const city = document.getElementById('city-filter').value;
+  const cat = document.getElementById('cat-filter').value;
+  const year = document.getElementById('year-filter').value;
+  const pay = document.getElementById('payment-filter').value;
+  return RAW.orders.filter(o =>
+    (city === 'all' || o.city === city) &&
+    (cat === 'all' || o.cat === cat) &&
+    (year === 'all' || o.date.startsWith(year)) &&
+    (pay === 'all' || o.payment === pay)
+  );
+}
+
+function groupBy(arr, key, valKey) {
+  const m = {};
+  arr.forEach(o => { m[o[key]] = (m[o[key]] || 0) + o[valKey]; });
+  return m;
+}
+
+function fmt(v) {
+  if (v >= 100000) return '₹' + (v/100000).toFixed(1) + 'L';
+  if (v >= 1000) return '₹' + Math.round(v/1000) + 'K';
+  return '₹' + Math.round(v);
+}
+
+function buildMonthly(data) {
+  const delivered = data.filter(o => o.status !== 'Cancelled');
+  const m = {};
+  delivered.forEach(o => { m[o.date] = (m[o.date] || 0) + o.rev; });
+  const sorted = Object.keys(m).sort();
+  return { labels: sorted.map(d => { const [y,mo] = d.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+mo-1] + ' ' + y.slice(2); }), values: sorted.map(k => m[k]) };
+}
+
+function applyFilters() {
+  const data = filterData();
+  const delivered = data.filter(o => o.status !== 'Cancelled');
+  const totalRev = delivered.reduce((s,o) => s + o.rev, 0);
+  const totalOrders = data.length;
+  const cancelled = data.filter(o => o.status === 'Cancelled').length;
+  const aov = delivered.length ? totalRev / delivered.length : 0;
+  const cancelRate = totalOrders ? (cancelled / totalOrders * 100) : 0;
+
+  document.getElementById('kpi-rev').textContent = fmt(totalRev);
+  document.getElementById('kpi-orders').textContent = totalOrders;
+  document.getElementById('kpi-orders-d').textContent = (totalOrders - cancelled) + ' delivered';
+  document.getElementById('kpi-aov').textContent = fmt(aov);
+  document.getElementById('kpi-cancel').textContent = Math.round(cancelRate) + '%';
+  document.getElementById('kpi-cancel-d').textContent = cancelled + ' of ' + totalOrders + ' orders';
+
+  const monthly = buildMonthly(data);
+  charts.line.data.labels = monthly.labels;
+  charts.line.data.datasets[0].data = monthly.values;
+  charts.line.update();
+
+  const catRev = groupBy(delivered, 'cat', 'rev');
+  const catLabels = Object.keys(catRev);
+  const catVals = catLabels.map(k => catRev[k]);
+  charts.donut.data.labels = catLabels;
+  charts.donut.data.datasets[0].data = catVals;
+  charts.donut.data.datasets[0].backgroundColor = catLabels.map(k => COLORS[k] || '#888');
+  charts.donut.update();
+  buildLegend('cat-legend', catLabels, catVals, true);
+
+  const cityRev = groupBy(delivered, 'city', 'rev');
+  const cityLabels = Object.keys(cityRev).sort((a,b) => cityRev[b] - cityRev[a]);
+  charts.city.data.labels = cityLabels;
+  charts.city.data.datasets[0].data = cityLabels.map(k => cityRev[k]);
+  charts.city.data.datasets[0].backgroundColor = cityLabels.map(k => COLORS[k] || '#888');
+  charts.city.update();
+
+  const brandRev = groupBy(delivered, 'brand', 'rev');
+  const brandLabels = Object.keys(brandRev).sort((a,b) => brandRev[b] - brandRev[a]).slice(0,8);
+  charts.brand.data.labels = brandLabels;
+  charts.brand.data.datasets[0].data = brandLabels.map(k => brandRev[k]);
+  charts.brand.data.datasets[0].backgroundColor = brandLabels.map(k => COLORS[k] || '#2a78d6');
+  charts.brand.update();
+
+  const payCount = {};
+  data.forEach(o => { payCount[o.payment] = (payCount[o.payment] || 0) + 1; });
+  const payLabels = Object.keys(payCount);
+  charts.pay.data.labels = payLabels;
+  charts.pay.data.datasets[0].data = payLabels.map(k => payCount[k]);
+  charts.pay.data.datasets[0].backgroundColor = payLabels.map(k => COLORS[k] || '#888');
+  charts.pay.update();
+  buildLegend('pay-legend', payLabels, payLabels.map(k => payCount[k]), false);
+}
+
+function buildLegend(id, labels, vals, showPct) {
+  const total = vals.reduce((s,v) => s+v, 0);
+  document.getElementById(id).innerHTML = labels.map((l,i) => {
+    const pct = showPct ? ' ' + Math.round(vals[i]/total*100) + '%' : ' ' + vals[i];
+    return `<span class="legend-item"><span class="legend-dot" style="background:${COLORS[l]||'#888'}"></span>${l}${pct}</span>`;
+  }).join('');
+}
+
+function initCharts() {
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? '#2c2c2a' : '#e1e0d9';
+  const textColor = isDark ? '#c3c2b7' : '#52514e';
+  const baseOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+
+  const monthly = buildMonthly(RAW.orders);
+  charts.line = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels: monthly.labels,
+      datasets: [{
+        label: 'Revenue',
+        data: monthly.values,
+        borderColor: '#2a78d6',
+        backgroundColor: 'rgba(42,120,214,0.08)',
+        borderWidth: 2,
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: { ...baseOpts, scales: {
+      x: { ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 12 }, grid: { display: false } },
+      y: { ticks: { color: textColor, font: { size: 10 }, callback: v => fmt(v) }, grid: { color: gridColor, lineWidth: 0.5 } }
+    }}
+  });
+
+  const catData = groupBy(RAW.orders.filter(o=>o.status!=='Cancelled'), 'cat', 'rev');
+  const catL = Object.keys(catData); const catV = catL.map(k=>catData[k]);
+  charts.donut = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: { labels: catL, datasets: [{ data: catV, backgroundColor: catL.map(k=>COLORS[k]||'#888'), borderWidth: 2, borderColor: isDark ? '#1a1a19' : '#fff' }] },
+    options: { ...baseOpts, cutout: '65%' }
+  });
+  buildLegend('cat-legend', catL, catV, true);
+
+  const cityData = groupBy(RAW.orders.filter(o=>o.status!=='Cancelled'), 'city', 'rev');
+  const cityL = Object.keys(cityData).sort((a,b)=>cityData[b]-cityData[a]);
+  charts.city = new Chart(document.getElementById('cityChart'), {
+    type: 'bar',
+    data: { labels: cityL, datasets: [{ data: cityL.map(k=>cityData[k]), backgroundColor: cityL.map(k=>COLORS[k]||'#888'), borderRadius: 4, borderSkipped: false }] },
+    options: { ...baseOpts, indexAxis: 'y', scales: {
+      x: { ticks: { color: textColor, font:{size:10}, callback: v=>fmt(v) }, grid: { color: gridColor, lineWidth:0.5 } },
+      y: { ticks: { color: textColor, font:{size:11} }, grid: { display:false } }
+    }}
+  });
+
+  const brandData = groupBy(RAW.orders.filter(o=>o.status!=='Cancelled'), 'brand', 'rev');
+  const brandL = Object.keys(brandData).sort((a,b)=>brandData[b]-brandData[a]).slice(0,8);
+  charts.brand = new Chart(document.getElementById('brandChart'), {
+    type: 'bar',
+    data: { labels: brandL, datasets: [{ data: brandL.map(k=>brandData[k]), backgroundColor: brandL.map(k=>COLORS[k]||'#2a78d6'), borderRadius: 4 }] },
+    options: { ...baseOpts, scales: {
+      x: { ticks: { color: textColor, font:{size:10}, maxRotation:35 }, grid:{ display:false } },
+      y: { ticks: { color: textColor, font:{size:10}, callback: v=>fmt(v) }, grid:{ color: gridColor, lineWidth:0.5 } }
+    }}
+  });
+
+  const payData = {}; RAW.orders.forEach(o => { payData[o.payment] = (payData[o.payment]||0)+1; });
+  const payL = Object.keys(payData);
+  charts.pay = new Chart(document.getElementById('payChart'), {
+    type: 'pie',
+    data: { labels: payL, datasets: [{ data: payL.map(k=>payData[k]), backgroundColor: payL.map(k=>COLORS[k]||'#888'), borderWidth: 2, borderColor: isDark ? '#1a1a19':'#fff' }] },
+    options: { ...baseOpts }
+  });
+  buildLegend('pay-legend', payL, payL.map(k=>payData[k]), false);
+
+  document.getElementById('last-refresh').textContent = 'Refreshed: ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+}
+
+initCharts();
+</script>
